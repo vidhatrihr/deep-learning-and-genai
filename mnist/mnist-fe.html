@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MNIST</title>
+  </head>
+  <body>
+    <div>
+      <canvas width="280" height="280"></canvas>
+    </div>
+
+    <button onclick="ctx.fillRect(0, 0, 280, 280)">clear</button>
+    <button onclick="makePrediction()">predict</button>
+    <div>Result: <span id="result">_</span></div>
+
+    <script>
+      let canvas = document.querySelector('canvas');
+      let ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, 280, 280);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 15;
+      ctx.lineCap = 'round';
+
+      let drawing = false;
+      canvas.onmousedown = e => {
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
+      };
+
+      canvas.onmousemove = e => {
+        if (drawing) {
+          ctx.lineTo(e.offsetX, e.offsetY);
+          ctx.stroke();
+        }
+      };
+
+      canvas.onmouseup = canvas.onmouseout = e => {
+        drawing = false;
+      };
+    </script>
+
+    <script>
+      async function makePrediction() {
+        let tinyCanvas = document.createElement('canvas');
+        tinyCanvas.width = 28;
+        tinyCanvas.height = 28;
+        let tinyCtx = tinyCanvas.getContext('2d');
+
+        tinyCtx.drawImage(canvas, 0, 0, 280, 280, 0, 0, 28, 28);
+        let imgData = tinyCtx.getImageData(0, 0, 28, 28).data;
+
+        let grid = [];
+        for (let i = 0; i < 28; i++) {
+          let row = [];
+          for (let j = 0; j < 28; j++) {
+            let pixelIndex = (i * 28 + j) * 4;
+            row.push(imgData[pixelIndex]);
+          }
+          grid.push(row);
+        }
+
+        let res = await fetch('http://127.0.0.1:5000/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ grid }),
+        });
+
+        let data = await res.json();
+        document.querySelector('#result').textContent = data.digit;
+      }
+    </script>
+  </body>
+</html>
